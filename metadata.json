@@ -1,0 +1,5 @@
+{
+  "name": "Voxel Bosphorus",
+  "description": "A 3D voxel visualization of the Istanbul Bosphorus using React Three Fiber.",
+  "requestFramePermissions": []
+}
