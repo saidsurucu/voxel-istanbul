@@ -128,7 +128,11 @@ const WavingFlag: React.FC<{ position: [number, number, number] }> = ({ position
 
 
 // --- Main Tower Component ---
-export const MaidensTower: React.FC = () => {
+interface MaidensTowerProps {
+  isNight: boolean;
+}
+
+export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
   const voxelData = useMemo(() => {
     const data: VoxelData[] = [];
     const push = (x: number, y: number, z: number, c: string) => data.push({position: [x,y,z], color: c});
@@ -140,7 +144,8 @@ export const MaidensTower: React.FC = () => {
     const cWhite = "#f8fafc";     
     const cRoof = "#ef4444";      
     const cDome = "#334155";      
-    const cRail = "#1e293b";      
+    const cRail = "#1e293b";  
+    const cWindow = "#1e293b"; // Day color for windows (Dark Slate)
     
     // --- RESCALED DIMENSIONS (Smaller) ---
     const pWidth = 2.2; 
@@ -218,11 +223,13 @@ export const MaidensTower: React.FC = () => {
         }
     }
 
-    // 6. UPPER TOWER
+    // 6. UPPER TOWER (Lantern)
     const tUpY = baseY + tBaseH;
     const tUpH = 1.2;
     const tRad = 0.6;
     const balcRad = 0.9;
+    
+    // Balcony Floor
     for(let x=-balcRad; x<=balcRad; x+=SCALE) {
         for(let z=-balcRad; z<=balcRad; z+=SCALE) {
             if (x*x + z*z < balcRad*balcRad && x*x + z*z > tRad*tRad) {
@@ -232,15 +239,42 @@ export const MaidensTower: React.FC = () => {
             }
         }
     }
+
+    // Lantern Body
     for(let y=0; y<tUpH; y+=SCALE) {
         for(let x=-tRad; x<=tRad; x+=SCALE) {
             for(let z=-tRad; z<=tRad; z+=SCALE) {
+                // Check cylinder bounds
                 if (x*x + z*z < tRad*tRad) {
+                    
+                    // HOLLOW CORE Check
+                    // Only draw walls approx 1-2 voxels thick
+                    const dist = Math.sqrt(x*x + z*z);
+                    if (dist < tRad - (SCALE * 1.5)) continue; 
+
                     let color = cWhite;
+                    let isWindow = false;
+                    
+                    // Window Band: y roughly centered in Lantern height
                     if (y > 0.4 && y < 0.8) {
-                         if (Math.abs(x) < 0.2 && (z > 0.4 || z < -0.4)) color = "#1e293b";
-                         if (Math.abs(z) < 0.2 && (x > 0.4 || x < -0.4)) color = "#1e293b";
+                         // Windows face cardinal directions
+                         // Z-facing windows
+                         if (Math.abs(x) < 0.25 && Math.abs(z) > 0.3) isWindow = true;
+                         // X-facing windows
+                         if (Math.abs(z) < 0.25 && Math.abs(x) > 0.3) isWindow = true;
                     }
+
+                    if (isWindow) {
+                        if (isNight) {
+                            // AT NIGHT: Do not render window voxels.
+                            // This creates a hole for the PointLight inside to shine out.
+                            continue; 
+                        } else {
+                            // AT DAY: Render dark glass
+                            color = cWindow;
+                        }
+                    }
+                    
                     push(x, tUpY + y, z, color);
                 }
             }
@@ -274,21 +308,35 @@ export const MaidensTower: React.FC = () => {
         push(0, poleY + y, 0, "#f8fafc");
     }
     
-    // (Static Flag logic removed in favor of WavingFlag component)
-
     return data;
-  }, []);
+  }, [isNight]);
 
   // Flag attach height calculation:
   // BaseY(0) + BaseH(1.8) + UpH(1.2) + DomeH(1.0) + PoleH(2.0) = 6.0
-  // Attach slightly below top tip
   const flagHeight = 5.8; 
+  
+  // Light positioned inside the hollow lantern
+  const lanternHeight = 1.8 + 0.6; // tUpY (1.8) + Half Lantern Height (0.6) = 2.4
 
   return (
     <group position={[8, 0, 8]}>
         <InstancedVoxelGroup data={voxelData} />
+        
         {/* Attach the new waving flag at the top of the pole */}
         <WavingFlag position={[0, flagHeight, 0]} />
+
+        {/* Night Light Source - Inside the Hollow Lantern */}
+        {isNight && (
+           <pointLight 
+             position={[0, lanternHeight, 0]} 
+             color="#facc15" 
+             intensity={5} 
+             distance={15} 
+             decay={1.5} 
+             castShadow
+             shadow-bias={-0.0001}
+           />
+        )}
     </group>
   );
 };

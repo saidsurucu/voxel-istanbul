@@ -1,6 +1,7 @@
-import React, { useRef, useLayoutEffect, useMemo } from 'react';
+import React, { useRef, useLayoutEffect, useMemo, useCallback } from 'react';
 import { InstancedMesh, Object3D, Color } from 'three';
 import { VoxelData } from '../types';
+import { enhanceShaderLighting } from '../utils/enhanceShaderLighting';
 
 interface InstancedVoxelGroupProps {
   data: VoxelData[];
@@ -29,6 +30,23 @@ export const InstancedVoxelGroup: React.FC<InstancedVoxelGroupProps> = ({ data, 
     if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
   }, [data, scale, dummy]);
 
+  const handleBeforeCompile = useCallback((shader: any) => {
+    enhanceShaderLighting(shader, {
+      aoColor: new Color('#0f172a'),      // Deep dark blue for occlusion
+      hemisphereColor: new Color('#334155'), // Slate for ambient shadows
+      irradianceColor: new Color('#f1f5f9'), // Bright white/grey for general irradiance
+      radianceColor: new Color('#e0f2fe'),   // Sky blue for reflections
+      
+      aoPower: 4.0,           // Stronger AO effect
+      aoSmoothing: 0.5,       // Smoother transition
+      roughnessPower: 1.0,    // Standard roughness
+      sunIntensity: 1.2,      // Boost sun light slightly
+      smoothingPower: 0.25,
+      
+      hardcodeValues: false   // Use uniforms
+    });
+  }, []);
+
   // If no data, render nothing
   if (data.length === 0) return null;
 
@@ -37,11 +55,14 @@ export const InstancedVoxelGroup: React.FC<InstancedVoxelGroupProps> = ({ data, 
       ref={meshRef} 
       args={[undefined, undefined, data.length]}
       frustumCulled={true}
+      castShadow
+      receiveShadow
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial 
         roughness={0.8} 
         metalness={0.1}
+        onBeforeCompile={handleBeforeCompile}
       />
     </instancedMesh>
   );
