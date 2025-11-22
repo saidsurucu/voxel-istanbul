@@ -6,10 +6,19 @@ import { enhanceShaderLighting } from '../utils/enhanceShaderLighting';
 interface InstancedVoxelGroupProps {
   data: VoxelData[];
   scale?: number;
+  transparent?: boolean;
+  opacity?: number;
+  castShadow?: boolean;
 }
 
 // Default scale updated to 0.125 for high detail
-export const InstancedVoxelGroup: React.FC<InstancedVoxelGroupProps> = ({ data, scale = 0.125 }) => {
+export const InstancedVoxelGroup: React.FC<InstancedVoxelGroupProps> = ({ 
+  data, 
+  scale = 0.125, 
+  transparent = false, 
+  opacity = 1,
+  castShadow = true
+}) => {
   const meshRef = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
 
@@ -55,13 +64,15 @@ export const InstancedVoxelGroup: React.FC<InstancedVoxelGroupProps> = ({ data, 
       ref={meshRef} 
       args={[undefined, undefined, data.length]}
       frustumCulled={true}
-      castShadow
+      castShadow={castShadow}
       receiveShadow
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial 
         roughness={0.8} 
         metalness={0.1}
+        transparent={transparent}
+        opacity={opacity}
         onBeforeCompile={handleBeforeCompile}
       />
     </instancedMesh>
