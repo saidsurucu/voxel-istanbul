@@ -1,16 +1,51 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useLayoutEffect } from 'react';
+import { InstancedMesh, Object3D } from 'three';
 import { InstancedVoxelGroup } from './VoxelElements';
 import { VoxelData } from '../types';
 
 interface YaliProps {
   isAsia: boolean;
+  isNight: boolean;
 }
 
 const SCALE = 0.125;
 
-export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
-  const voxelData = useMemo(() => {
-    const data: VoxelData[] = [];
+// Emissive Lights Component
+const YaliLights: React.FC<{ data: VoxelData[], color: string }> = ({ data, color }) => {
+    const meshRef = useRef<InstancedMesh>(null);
+    const dummy = useMemo(() => new Object3D(), []);
+
+    useLayoutEffect(() => {
+        if (!meshRef.current) return;
+        data.forEach((voxel, i) => {
+            dummy.position.set(voxel.position[0], voxel.position[1], voxel.position[2]);
+            dummy.scale.set(SCALE, SCALE, SCALE);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    }, [data, dummy]);
+
+    if (data.length === 0) return null;
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, data.length]}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial 
+                color={color} 
+                emissive={color} 
+                emissiveIntensity={2.0} 
+                toneMapped={false} 
+            />
+        </instancedMesh>
+    );
+};
+
+export const YaliTypeC: React.FC<YaliProps> = ({ isAsia, isNight }) => {
+  const { opaque, glass } = useMemo(() => {
+    const opaque: VoxelData[] = [];
+    const glass: VoxelData[] = [];
+
     const Z_RANGE = 192; 
     const startOffset = 96; // Water edge
     
@@ -21,7 +56,11 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
     };
 
     const push = (x: number, y: number, z: number, c: string) => {
-        data.push({ position: [x, y, z], color: c });
+        opaque.push({ position: [x, y, z], color: c });
+    };
+
+    const pushGlass = (x: number, y: number, z: number, c: string) => {
+        glass.push({ position: [x, y, z], color: c });
     };
 
     // Iterate along the shoreline
@@ -65,6 +104,7 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
         const cWall = "#f8fafc";      // White/Cream
         const cTrim = "#e2e8f0";      // Light detailed trim
         const cWindow = "#1e293b";    // Dark windows
+        const cNightGlass = '#fef08a'; // Warm yellow light
         const cRoof = "#9f1239";      // Red/Burgundy Tile Roof
         const cBase = "#f1f5f9";      // Stone base
         const cGold = "#d97706";      // Finial gold
@@ -119,6 +159,7 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
                         const pz = worldZ + (lz * SCALE);
                         
                         let color = (f===0) ? cBase : cWall;
+                        let isWindow = false;
 
                         // --- DETAILS ---
                         const isFront = (lx === localXOffset);
@@ -135,7 +176,7 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
                              // Pattern: Wall, Window, Window, Wall
                              const winPattern = (lz + 100) % 4; 
                              if (winPattern === 1 || winPattern === 2) {
-                                 color = cWindow;
+                                 isWindow = true;
                              } else {
                                  // Pilaster/Column between windows
                                  color = cWall; 
@@ -145,9 +186,18 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
                         // Entrance Door (Ground Floor, Center)
                         if (f === 0 && isFront && isCenter && ly < 6) {
                              color = "#451a03"; // Dark Wood Door
+                             isWindow = false; // Door is not glass here
                         }
 
-                        push(px, py, pz, color);
+                        if (isWindow) {
+                            if (isNight) {
+                                pushGlass(px, py, pz, cNightGlass);
+                            } else {
+                                push(px, py, pz, cWindow);
+                            }
+                        } else {
+                            push(px, py, pz, color);
+                        }
                     }
                 }
             }
@@ -193,6 +243,7 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
                         const pz = worldZ + ((tz+dz) * SCALE);
                         
                         let col = cWall;
+                        let isTowerWin = false;
                         
                         // Windows in tower
                         if (ty > 2 && ty < 8) {
@@ -200,7 +251,7 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
                                 // Corners are solid
                                 if ((Math.abs(dx)+Math.abs(dz)) < 4) {
                                     // Center of face is window
-                                    col = cWindow;
+                                    isTowerWin = true;
                                 }
                             }
                         }
@@ -211,9 +262,18 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
                              const reduction = (ty - 8);
                              if (Math.abs(dx) > (2 - reduction/2) || Math.abs(dz) > (2 - reduction/2)) continue;
                              col = cRoof;
+                             isTowerWin = false;
                         }
 
-                        push(px, py, pz, col);
+                        if (isTowerWin) {
+                            if (isNight) {
+                                pushGlass(px, py, pz, cNightGlass);
+                            } else {
+                                push(px, py, pz, cWindow);
+                            }
+                        } else {
+                            push(px, py, pz, col);
+                        }
                     }
                 }
             }
@@ -239,8 +299,13 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia }) => {
         }
     } 
 
-    return data;
-  }, [isAsia]);
+    return { opaque, glass };
+  }, [isAsia, isNight]);
 
-  return <InstancedVoxelGroup data={voxelData} />;
+  return (
+    <>
+      <InstancedVoxelGroup data={opaque} />
+      {glass.length > 0 && <YaliLights data={glass} color="#fef08a" />}
+    </>
+  );
 };

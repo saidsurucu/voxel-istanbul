@@ -1,10 +1,41 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useLayoutEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group } from 'three';
+import { Group, InstancedMesh, Object3D } from 'three';
 import { InstancedVoxelGroup } from './VoxelElements';
 import { VoxelData } from '../types';
 
 const SCALE = 0.125;
+
+// High-intensity emissive mesh for night lights (Ferry Windows)
+const FerryLights: React.FC<{ data: VoxelData[], color: string }> = ({ data, color }) => {
+    const meshRef = useRef<InstancedMesh>(null);
+    const dummy = useMemo(() => new Object3D(), []);
+
+    useLayoutEffect(() => {
+        if (!meshRef.current) return;
+        data.forEach((voxel, i) => {
+            dummy.position.set(voxel.position[0], voxel.position[1], voxel.position[2]);
+            dummy.scale.set(SCALE, SCALE, SCALE);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    }, [data, dummy]);
+
+    if (data.length === 0) return null;
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, data.length]}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial 
+                color={color} 
+                emissive={color} 
+                emissiveIntensity={3} 
+                toneMapped={false} 
+            />
+        </instancedMesh>
+    );
+};
 
 interface FerryProps {
   isNight: boolean;
@@ -253,12 +284,7 @@ export const Ferry: React.FC<FerryProps> = ({ isNight }) => {
         
         {/* Night Window Glow - rendered separately for effect */}
         {glass.length > 0 && (
-          <InstancedVoxelGroup 
-             data={glass} 
-             transparent={true} 
-             opacity={isNight ? 0.9 : 1} // Higher opacity at night to look like bright lights
-             castShadow={false}
-          />
+           <FerryLights data={glass} color="#facc15" />
         )}
 
         {/* Interior Lights (Attached to group so they move with the ship) */}

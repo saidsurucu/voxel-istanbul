@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group, Color } from 'three';
+import { Group, Color, InstancedMesh, Object3D } from 'three';
 import { InstancedVoxelGroup } from './VoxelElements';
 import { VoxelData } from '../types';
 import { enhanceShaderLighting } from '../utils/enhanceShaderLighting';
@@ -54,23 +54,15 @@ const Car: React.FC<CarProps> = ({ initialX, laneZ, direction, speed, color, isN
     });
   }, []);
 
-  // Dimensions
-  // Body: 5 voxels long (0.625), 3 voxels wide (0.375), 1 voxel high (0.125)
-  // Positioned at deckY + SCALE (which is the voxel layer just above deck)
-  // We center the group on the lane.
-
   const cHeadlight = "#fef08a";
   const cTaillight = "#dc2626";
 
-  // Determine front and back based on direction
-  // Direction 1 (+X): Front is +X side.
-  // Direction -1 (-X): Front is -X side.
   const frontX = direction > 0 ? 0.25 : -0.25;
   const backX = direction > 0 ? -0.25 : 0.25;
 
   return (
     <group ref={groupRef} position={[initialX, DECK_Y + SCALE, BRIDGE_Z + laneZ]}>
-      {/* Car Body (Simplified as one box for performance/smoothness) */}
+      {/* Car Body */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[5 * SCALE, 1 * SCALE, 3 * SCALE]} />
         <meshStandardMaterial 
@@ -81,7 +73,7 @@ const Car: React.FC<CarProps> = ({ initialX, laneZ, direction, speed, color, isN
         />
       </mesh>
 
-      {/* Lights (Only visible/emissive at night, but geometry always there) */}
+      {/* Lights (Only visible/emissive at night) */}
       {isNight && (
         <>
           {/* Headlights (Front) */}
@@ -113,22 +105,15 @@ const Car: React.FC<CarProps> = ({ initialX, laneZ, direction, speed, color, isN
 const Traffic: React.FC<{ isNight: boolean }> = ({ isNight }) => {
   const cars = useMemo(() => {
     const generatedCars = [];
-    const colors = ["#f1f5f9", "#1e293b", "#ef4444", "#3b82f6", "#cbd5e1"]; // White, Black, Red, Blue, Grey
-    
-    // Generate static set of cars
-    // Lanes: 0, 1, 2 for each direction
-    // Direction 1: z > 0 (Right side of bridge looking +X?) - Let's use logic from original file
-    // Original: const laneZ = (0.6 + (lane * 0.8)) * direction;
-    // Direction determines side.
+    const colors = ["#f1f5f9", "#1e293b", "#ef4444", "#3b82f6", "#cbd5e1"]; 
     
     for (let i = 0; i < 24; i++) {
-        const lane = Math.floor(Math.random() * 3); // 0, 1, 2
+        const lane = Math.floor(Math.random() * 3); 
         const direction = Math.random() > 0.5 ? 1 : -1;
         const laneZ = (0.6 + (lane * 0.8)) * direction;
         
-        // Random Position along bridge
         const initialX = (Math.random() - 0.5) * BRIDGE_LENGTH;
-        const speed = 2.0 + Math.random() * 2.0; // Random speed
+        const speed = 2.0 + Math.random() * 2.0; 
         const color = colors[Math.floor(Math.random() * colors.length)];
 
         generatedCars.push({
@@ -146,14 +131,43 @@ const Traffic: React.FC<{ isNight: boolean }> = ({ isNight }) => {
   return (
     <group>
       {cars.map(car => (
-        <Car 
-           key={car.id} 
-           {...car} 
-           isNight={isNight} 
-        />
+        <Car key={car.id} {...car} isNight={isNight} />
       ))}
     </group>
   );
+};
+
+// --- Emissive Lights Component ---
+// This renders a group of voxels with a high-intensity emissive material
+// similar to the car lights technique.
+const BridgeLightGroup: React.FC<{ data: VoxelData[], color: string, intensity: number }> = ({ data, color, intensity }) => {
+    const meshRef = useRef<InstancedMesh>(null);
+    const dummy = useMemo(() => new Object3D(), []);
+
+    useLayoutEffect(() => {
+        if (!meshRef.current) return;
+        data.forEach((voxel, i) => {
+            dummy.position.set(voxel.position[0], voxel.position[1], voxel.position[2]);
+            dummy.scale.set(SCALE, SCALE, SCALE);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    }, [data, dummy]);
+
+    if (data.length === 0) return null;
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, data.length]}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial 
+                color={color} 
+                emissive={color} 
+                emissiveIntensity={intensity} 
+                toneMapped={false} 
+            />
+        </instancedMesh>
+    );
 };
 
 // --- Static Bridge Structure ---
@@ -162,28 +176,41 @@ interface BridgeProps {
 }
 
 export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
-  const voxelData = useMemo(() => {
-    const data: VoxelData[] = [];
+  // Separate Structural voxels from Light voxels
+  const { structure, redLights, blueLights, purpleLights, yellowLights } = useMemo(() => {
+    const structure: VoxelData[] = [];
+    const redLights: VoxelData[] = [];
+    const blueLights: VoxelData[] = [];
+    const purpleLights: VoxelData[] = [];
+    const yellowLights: VoxelData[] = [];
     
     // --- DIMENSIONS ---
-    const towerH = 28;      // Height of towers
-    const deckWidth = 4.5;  // Width of the deck
+    const towerH = 28;      
+    const deckWidth = 4.5;  
 
     // --- PALETTE ---
-    const cSteel = "#94a3b8";      // Slate 400
-    const cDarkSteel = "#475569";  // Slate 600
-    const cConcrete = "#cbd5e1";   // Slate 300
-    const cAsphalt = "#1e293b";    // Slate 800
-    const cLine = "#f8fafc";       // White
-    const cCable = "#cbd5e1";      // Light Grey
-    const cRedLight = "#ef4444";   // Beacon Red
+    const cSteel = "#94a3b8";      
+    const cDarkSteel = "#475569";  
+    const cConcrete = "#cbd5e1";   
+    const cAsphalt = "#1e293b";    
+    const cLine = "#f8fafc";       
+    const cCable = "#cbd5e1";      
     
-    // Night Colors (High brightness for Bloom)
-    const cLedBlue = "#3b82f6";    // Bright Blue
-    const cLedPurple = "#a855f7";  // Bright Purple
+    const cRedLight = "#ef4444";   
+    const cLedBlue = "#3b82f6";    
+    const cLedPurple = "#a855f7";  
+    const cLampNight = "#fef3c7";
 
-    const push = (x: number, y: number, z: number, color: string) => {
-        data.push({ position: [x, y, z], color });
+    const pushStructure = (x: number, y: number, z: number, color: string) => {
+        structure.push({ position: [x, y, z], color });
+    };
+
+    const pushLight = (x: number, y: number, z: number, color: string, type: 'red'|'blue'|'purple'|'yellow') => {
+        const v: VoxelData = { position: [x, y, z], color };
+        if (type === 'red') redLights.push(v);
+        else if (type === 'blue') blueLights.push(v);
+        else if (type === 'purple') purpleLights.push(v);
+        else if (type === 'yellow') yellowLights.push(v);
     };
 
     // 1. TOWERS (The Majestic Pylons)
@@ -194,7 +221,7 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
         for (let y = -2; y < 1; y += SCALE) {
              for (let dx = -0.5; dx <= 0.5; dx += SCALE) {
                  for (let dz = -3; dz <= 3; dz += SCALE) {
-                     push(tx + dx, y, BRIDGE_Z + dz, cConcrete);
+                     pushStructure(tx + dx, y, BRIDGE_Z + dz, cConcrete);
                  }
              }
         }
@@ -204,7 +231,7 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
             for (let y = 1; y < towerH; y += SCALE) {
                 for (let dx = -SCALE; dx <= SCALE; dx+=SCALE) {
                     for (let dz = -SCALE; dz <= SCALE; dz+=SCALE) {
-                        push(tx + dx, y, BRIDGE_Z + zOffset + dz, cSteel);
+                        pushStructure(tx + dx, y, BRIDGE_Z + zOffset + dz, cSteel);
                     }
                 }
             }
@@ -214,8 +241,8 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
         const braceLevels = [DECK_Y + 2, DECK_Y + 8, DECK_Y + 14, towerH - 2];
         braceLevels.forEach(yLevel => {
             for (let z = BRIDGE_Z - legOffset; z <= BRIDGE_Z + legOffset; z += SCALE) {
-                push(tx, yLevel, z, cDarkSteel);
-                push(tx, yLevel - SCALE, z, cDarkSteel);
+                pushStructure(tx, yLevel, z, cDarkSteel);
+                pushStructure(tx, yLevel - SCALE, z, cDarkSteel);
             }
         });
 
@@ -230,8 +257,8 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
                  const z1 = BRIDGE_Z - legOffset + t * w; 
                  const z2 = BRIDGE_Z + legOffset - t * w; 
                  if (Math.abs(tx) > 0) {
-                    push(tx, y, z1, cDarkSteel);
-                    push(tx, y, z2, cDarkSteel);
+                    pushStructure(tx, y, z1, cDarkSteel);
+                    pushStructure(tx, y, z2, cDarkSteel);
                  }
              }
         };
@@ -241,8 +268,8 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
 
         // Top Beacons
         if (isNight) {
-            push(tx, towerH + SCALE, BRIDGE_Z - legOffset, cRedLight);
-            push(tx, towerH + SCALE, BRIDGE_Z + legOffset, cRedLight);
+            pushLight(tx, towerH + SCALE, BRIDGE_Z - legOffset, cRedLight, 'red');
+            pushLight(tx, towerH + SCALE, BRIDGE_Z + legOffset, cRedLight, 'red');
         }
     };
 
@@ -252,21 +279,19 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
     // 2. DECK
     for (let x = -BRIDGE_LENGTH/2; x <= BRIDGE_LENGTH/2; x += SCALE) {
         
-        if (Math.abs(Math.abs(x) - TOWER_X) < 0.5) continue;
-
         // -- TRUSS STRUCTURE --
         const trussDepth = 1.0;
         const trussY = DECK_Y - trussDepth;
-        push(x, trussY, BRIDGE_Z - deckWidth/2 + 0.5, cDarkSteel);
-        push(x, trussY, BRIDGE_Z + deckWidth/2 - 0.5, cDarkSteel);
+        pushStructure(x, trussY, BRIDGE_Z - deckWidth/2 + 0.5, cDarkSteel);
+        pushStructure(x, trussY, BRIDGE_Z + deckWidth/2 - 0.5, cDarkSteel);
         
         if (Math.floor(x) === x) {
              for(let y=trussY; y<DECK_Y; y+=SCALE) {
-                 push(x, y, BRIDGE_Z - deckWidth/2 + 0.5, cDarkSteel);
-                 push(x, y, BRIDGE_Z + deckWidth/2 - 0.5, cDarkSteel);
+                 pushStructure(x, y, BRIDGE_Z - deckWidth/2 + 0.5, cDarkSteel);
+                 pushStructure(x, y, BRIDGE_Z + deckWidth/2 - 0.5, cDarkSteel);
              }
              for(let z = -deckWidth/2; z <= deckWidth/2; z+=SCALE) {
-                 if (Math.random() > 0.5) push(x, trussY, BRIDGE_Z + z, cDarkSteel);
+                 if (Math.random() > 0.5) pushStructure(x, trussY, BRIDGE_Z + z, cDarkSteel);
              }
         }
 
@@ -276,23 +301,23 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
             
             // Side Walkways
             if (Math.abs(zRel) > deckWidth/2 - 0.6) {
-                push(x, DECK_Y, BRIDGE_Z + z, cConcrete); 
+                pushStructure(x, DECK_Y, BRIDGE_Z + z, cConcrete); 
                 if (Math.abs(zRel) > deckWidth/2 - 0.2) {
-                    push(x, DECK_Y + SCALE, BRIDGE_Z + z, cSteel);
+                    pushStructure(x, DECK_Y + SCALE, BRIDGE_Z + z, cSteel);
                 }
                 continue;
             }
 
             // Median Strip
             if (Math.abs(zRel) < 0.2) {
-                push(x, DECK_Y + SCALE/2, BRIDGE_Z + z, cConcrete);
+                pushStructure(x, DECK_Y + SCALE/2, BRIDGE_Z + z, cConcrete);
                 // Lamp posts
                 if (Math.abs(x % 8.0) < SCALE) {
-                    for(let h=0; h<3; h++) push(x, DECK_Y + 0.5 + h*SCALE, BRIDGE_Z + z, cSteel);
+                    for(let h=0; h<3; h++) pushStructure(x, DECK_Y + 0.5 + h*SCALE, BRIDGE_Z + z, cSteel);
                     if (isNight) {
-                         push(x, DECK_Y + 0.5 + 3*SCALE, BRIDGE_Z + z, "#fef3c7");
-                         push(x+SCALE, DECK_Y + 0.5 + 3*SCALE, BRIDGE_Z + z, "#fef3c7");
-                         push(x-SCALE, DECK_Y + 0.5 + 3*SCALE, BRIDGE_Z + z, "#fef3c7");
+                         pushLight(x, DECK_Y + 0.5 + 3*SCALE, BRIDGE_Z + z, cLampNight, 'yellow');
+                         pushLight(x+SCALE, DECK_Y + 0.5 + 3*SCALE, BRIDGE_Z + z, cLampNight, 'yellow');
+                         pushLight(x-SCALE, DECK_Y + 0.5 + 3*SCALE, BRIDGE_Z + z, cLampNight, 'yellow');
                     }
                 }
                 continue;
@@ -304,7 +329,7 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
             if (isLaneLine && Math.abs(x % 2.0) < 1.0) {
                  surfaceColor = cLine;
             }
-            push(x, DECK_Y, BRIDGE_Z + z, surfaceColor);
+            pushStructure(x, DECK_Y, BRIDGE_Z + z, surfaceColor);
         }
     }
 
@@ -318,21 +343,32 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
         const progress = x / TOWER_X; 
         const y = (DECK_Y + 3) + (progress * progress) * sag;
         
-        const cableColor = isNight ? cLedBlue : cCable;
-
         // Main Cables
-        push(x, y, cableZ, cableColor);
-        push(x, y, cableZ2, cableColor);
+        if (isNight) {
+            pushLight(x, y, cableZ, cLedBlue, 'blue');
+            pushLight(x, y, cableZ2, cLedBlue, 'blue');
+        } else {
+            pushStructure(x, y, cableZ, cCable);
+            pushStructure(x, y, cableZ2, cCable);
+        }
 
         // Vertical Suspenders
         if (Math.abs(x % 1.5) < SCALE/1.5) {
              for (let vy = DECK_Y + SCALE; vy < y; vy += SCALE) {
-                 let vColor = cCable;
                  if (isNight) {
-                     vColor = (vy > (y + DECK_Y)/2) ? cLedPurple : cLedBlue;
+                     // Gradient effect logic: Upper half purple, lower half blue
+                     const isPurple = (vy > (y + DECK_Y)/2);
+                     if (isPurple) {
+                         pushLight(x, vy, cableZ, cLedPurple, 'purple');
+                         pushLight(x, vy, cableZ2, cLedPurple, 'purple');
+                     } else {
+                         pushLight(x, vy, cableZ, cLedBlue, 'blue');
+                         pushLight(x, vy, cableZ2, cLedBlue, 'blue');
+                     }
+                 } else {
+                     pushStructure(x, vy, cableZ, cCable); 
+                     pushStructure(x, vy, cableZ2, cCable);
                  }
-                 push(x, vy, cableZ, vColor); 
-                 push(x, vy, cableZ2, vColor);
              }
         }
     }
@@ -345,24 +381,41 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
          const xRight = TOWER_X + dx;
          const progress = i / (backSpanLen / SCALE);
          const y = cableStartH - (progress * (cableStartH - DECK_Y));
-         const cableColor = isNight ? cLedBlue : cCable;
-         push(xLeft, y, cableZ, cableColor);
-         push(xLeft, y, cableZ2, cableColor);
-         push(xRight, y, cableZ, cableColor);
-         push(xRight, y, cableZ2, cableColor);
+         
+         if (isNight) {
+             pushLight(xLeft, y, cableZ, cLedBlue, 'blue');
+             pushLight(xLeft, y, cableZ2, cLedBlue, 'blue');
+             pushLight(xRight, y, cableZ, cLedBlue, 'blue');
+             pushLight(xRight, y, cableZ2, cLedBlue, 'blue');
+         } else {
+             pushStructure(xLeft, y, cableZ, cCable);
+             pushStructure(xLeft, y, cableZ2, cCable);
+             pushStructure(xRight, y, cableZ, cCable);
+             pushStructure(xRight, y, cableZ2, cCable);
+         }
     }
 
-    return data;
+    return { structure, redLights, blueLights, purpleLights, yellowLights };
   }, [isNight]);
 
   return (
     <group>
         {/* Static Structure */}
         <InstancedVoxelGroup 
-            data={voxelData} 
+            data={structure} 
             castShadow={true} 
         />
         
+        {/* Emissive Night Lights */}
+        {isNight && (
+            <>
+                <BridgeLightGroup data={redLights} color="#ef4444" intensity={3} />
+                <BridgeLightGroup data={blueLights} color="#3b82f6" intensity={2.5} />
+                <BridgeLightGroup data={purpleLights} color="#a855f7" intensity={2.5} />
+                <BridgeLightGroup data={yellowLights} color="#fef3c7" intensity={2} />
+            </>
+        )}
+
         {/* Animated Traffic */}
         <Traffic isNight={isNight} />
     </group>

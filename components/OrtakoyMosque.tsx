@@ -1,8 +1,40 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useLayoutEffect } from 'react';
+import { InstancedMesh, Object3D } from 'three';
 import { InstancedVoxelGroup } from './VoxelElements';
 import { VoxelData } from '../types';
 
 const SCALE = 0.125;
+
+// High-intensity emissive mesh for night lights (Mosque Windows)
+const MosqueLights: React.FC<{ data: VoxelData[], color: string }> = ({ data, color }) => {
+    const meshRef = useRef<InstancedMesh>(null);
+    const dummy = useMemo(() => new Object3D(), []);
+
+    useLayoutEffect(() => {
+        if (!meshRef.current) return;
+        data.forEach((voxel, i) => {
+            dummy.position.set(voxel.position[0], voxel.position[1], voxel.position[2]);
+            dummy.scale.set(SCALE, SCALE, SCALE);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    }, [data, dummy]);
+
+    if (data.length === 0) return null;
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, data.length]}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial 
+                color={color} 
+                emissive={color} 
+                emissiveIntensity={2.5} 
+                toneMapped={false} 
+            />
+        </instancedMesh>
+    );
+};
 
 interface OrtakoyMosqueProps {
   isNight: boolean;
@@ -355,14 +387,9 @@ export const OrtakoyMosque: React.FC<OrtakoyMosqueProps> = ({ isNight }) => {
             {/* Opaque Structure */}
             <InstancedVoxelGroup data={opaque} />
             
-            {/* Frosted Glass Windows (Only at night for effect, or if populated) */}
+            {/* Night Window Glow - rendered with specialized emissive component */}
             {glass.length > 0 && (
-                <InstancedVoxelGroup 
-                    data={glass} 
-                    transparent={true} 
-                    opacity={0.5} 
-                    castShadow={false} // CRITICAL: Allows internal point light to shine OUT
-                />
+                <MosqueLights data={glass} color="#fef08a" />
             )}
             
             {isNight && (
@@ -371,7 +398,7 @@ export const OrtakoyMosque: React.FC<OrtakoyMosqueProps> = ({ isNight }) => {
                     <pointLight 
                         position={[12.5 * SCALE, 8 * SCALE, 12.5 * SCALE]} 
                         color="#facc15" 
-                        intensity={12} 
+                        intensity={10} 
                         distance={60} 
                         decay={1.0} 
                         castShadow
@@ -381,7 +408,7 @@ export const OrtakoyMosque: React.FC<OrtakoyMosqueProps> = ({ isNight }) => {
                     <pointLight 
                         position={[12.5 * SCALE, 22 * SCALE, 12.5 * SCALE]} 
                         color="#facc15" 
-                        intensity={8} 
+                        intensity={6} 
                         distance={40} 
                         decay={1.0} 
                     />
@@ -390,7 +417,7 @@ export const OrtakoyMosque: React.FC<OrtakoyMosqueProps> = ({ isNight }) => {
                     <pointLight 
                         position={[12.5 * SCALE, 6 * SCALE, -4 * SCALE]} 
                         color="#facc15" 
-                        intensity={4} 
+                        intensity={3} 
                         distance={20} 
                         decay={1.5} 
                     />

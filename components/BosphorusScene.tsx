@@ -99,8 +99,8 @@ export const BosphorusScene: React.FC<BosphorusSceneProps> = ({ mode }) => {
         <WaterBody isNight={isNight} />
         <BosphorusLandscape />
         
-        <WaterfrontMansions isAsia={false} />
-        <WaterfrontMansions isAsia={true} />
+        <WaterfrontMansions isAsia={false} isNight={isNight} />
+        <WaterfrontMansions isAsia={true} isNight={isNight} />
         
         <Apartments />
 

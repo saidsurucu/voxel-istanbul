@@ -126,6 +126,37 @@ const WavingFlag: React.FC<{ position: [number, number, number] }> = ({ position
   );
 };
 
+// --- Emissive Lights Component for Tower Windows ---
+const TowerLights: React.FC<{ data: VoxelData[], color: string }> = ({ data, color }) => {
+    const meshRef = useRef<InstancedMesh>(null);
+    const dummy = useMemo(() => new Object3D(), []);
+
+    useLayoutEffect(() => {
+        if (!meshRef.current) return;
+        data.forEach((voxel, i) => {
+            dummy.position.set(voxel.position[0], voxel.position[1], voxel.position[2]);
+            dummy.scale.set(SCALE, SCALE, SCALE);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    }, [data, dummy]);
+
+    if (data.length === 0) return null;
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, data.length]}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial 
+                color={color} 
+                emissive={color} 
+                emissiveIntensity={3} 
+                toneMapped={false} 
+            />
+        </instancedMesh>
+    );
+};
+
 
 // --- Main Tower Component ---
 interface MaidensTowerProps {
@@ -271,7 +302,7 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
                     if (isWindow) {
                         if (isNight) {
                             // AT NIGHT: Render as frosted glass voxels.
-                            // These will be in the transparent group with castShadow=false.
+                            // These will be rendered with TowerLights for Bloom.
                             pushGlass(x, tUpY + y, z, cNightGlass);
                             continue; 
                         } else {
@@ -327,14 +358,9 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
     <group position={[8, 0, 8]}>
         <InstancedVoxelGroup data={opaque} />
 
-        {/* Frosted Glass Windows (Only at night for effect) */}
+        {/* Night Window Glow - rendered separately for bloom effect */}
         {glass.length > 0 && (
-            <InstancedVoxelGroup 
-                data={glass} 
-                transparent={true} 
-                opacity={0.5} 
-                castShadow={false} // Allows internal point light to shine OUT
-            />
+            <TowerLights data={glass} color="#fef08a" />
         )}
         
         {/* Attach the new waving flag at the top of the pole */}

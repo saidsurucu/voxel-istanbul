@@ -5,14 +5,15 @@ import { YaliTypeC } from './YaliTypeC';
 
 interface YaliProps {
   isAsia: boolean;
+  isNight: boolean;
 }
 
-export const WaterfrontMansions: React.FC<YaliProps> = ({ isAsia }) => {
+export const WaterfrontMansions: React.FC<YaliProps> = ({ isAsia, isNight }) => {
   return (
     <>
-      <YaliTypeA isAsia={isAsia} />
-      <YaliTypeB isAsia={isAsia} />
-      <YaliTypeC isAsia={isAsia} />
+      <YaliTypeA isAsia={isAsia} isNight={isNight} />
+      <YaliTypeB isAsia={isAsia} isNight={isNight} />
+      <YaliTypeC isAsia={isAsia} isNight={isNight} />
     </>
   );
 };
