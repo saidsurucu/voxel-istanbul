@@ -156,5 +156,5 @@ export const Bridge: React.FC = () => {
     return data;
   }, []);
 
-  return <InstancedVoxelGroup data={voxelData} />;
+  return <InstancedVoxelGroup data={voxelData} castShadow={false} />;
 };

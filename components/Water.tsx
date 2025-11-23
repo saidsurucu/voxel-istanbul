@@ -87,6 +87,15 @@ export const WaterBody: React.FC<WaterProps> = ({ isNight }) => {
         
         hardcodeValues: false
      });
+
+     // Remove direct light specular reflections (the "balls" of light on water)
+     shader.fragmentShader = shader.fragmentShader.replace(
+       '#include <lights_fragment_end>',
+       `
+       #include <lights_fragment_end>
+       reflectedLight.directSpecular = vec3(0.0);
+       `
+     );
   }, [isNight]);
 
   return (

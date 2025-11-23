@@ -133,9 +133,12 @@ interface MaidensTowerProps {
 }
 
 export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
-  const voxelData = useMemo(() => {
-    const data: VoxelData[] = [];
-    const push = (x: number, y: number, z: number, c: string) => data.push({position: [x,y,z], color: c});
+  const { opaque, glass } = useMemo(() => {
+    const opaque: VoxelData[] = [];
+    const glass: VoxelData[] = [];
+    
+    const push = (x: number, y: number, z: number, c: string) => opaque.push({position: [x,y,z], color: c});
+    const pushGlass = (x: number, y: number, z: number, c: string) => glass.push({position: [x,y,z], color: c});
 
     // Palette matching the reference image
     const cRock = "#44403c";      
@@ -146,6 +149,7 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
     const cDome = "#334155";      
     const cRail = "#1e293b";  
     const cWindow = "#1e293b"; // Day color for windows (Dark Slate)
+    const cNightGlass = "#fef08a"; // Frosted Glass (Yellow-200) for night glow
     
     // --- RESCALED DIMENSIONS (Smaller) ---
     const pWidth = 2.2; 
@@ -266,11 +270,12 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
 
                     if (isWindow) {
                         if (isNight) {
-                            // AT NIGHT: Do not render window voxels.
-                            // This creates a hole for the PointLight inside to shine out.
+                            // AT NIGHT: Render as frosted glass voxels.
+                            // These will be in the transparent group with castShadow=false.
+                            pushGlass(x, tUpY + y, z, cNightGlass);
                             continue; 
                         } else {
-                            // AT DAY: Render dark glass
+                            // AT DAY: Render dark glass (opaque)
                             color = cWindow;
                         }
                     }
@@ -308,7 +313,7 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
         push(0, poleY + y, 0, "#f8fafc");
     }
     
-    return data;
+    return { opaque, glass };
   }, [isNight]);
 
   // Flag attach height calculation:
@@ -320,7 +325,17 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
 
   return (
     <group position={[8, 0, 8]}>
-        <InstancedVoxelGroup data={voxelData} />
+        <InstancedVoxelGroup data={opaque} />
+
+        {/* Frosted Glass Windows (Only at night for effect) */}
+        {glass.length > 0 && (
+            <InstancedVoxelGroup 
+                data={glass} 
+                transparent={true} 
+                opacity={0.5} 
+                castShadow={false} // Allows internal point light to shine OUT
+            />
+        )}
         
         {/* Attach the new waving flag at the top of the pole */}
         <WavingFlag position={[0, flagHeight, 0]} />

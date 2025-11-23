@@ -196,7 +196,8 @@ export const YaliTypeA: React.FC<YaliProps> = ({ isAsia }) => {
         const overhang = 3; // Eaves
         
         // Roof layers
-        for(let h=0; h<7; h++) {
+        const roofLayers = 7;
+        for(let h=0; h<roofLayers; h++) {
             const inset = h;
             // Calculate roof footprint at this height
             // Relative to upper floor "box"
@@ -208,7 +209,9 @@ export const YaliTypeA: React.FC<YaliProps> = ({ isAsia }) => {
             for(let rx=rMinX; rx<=rMaxX; rx++) {
                 for(let rz=rMinZ; rz<=rMaxZ; rz++) {
                     // Hollow Optimization
-                    if (rx>rMinX && rx<rMaxX && rz>rMinZ && rz<rMaxZ) continue;
+                    // FIX: Don't hollow out the top layer, so the roof is closed
+                    const isTop = (h === roofLayers - 1);
+                    if (!isTop && rx>rMinX && rx<rMaxX && rz>rMinZ && rz<rMaxZ) continue;
                     
                     const px = worldX + (rx * xDir * SCALE);
                     const py = roofY + (h * SCALE);

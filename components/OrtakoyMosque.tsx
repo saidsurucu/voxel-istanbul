@@ -360,7 +360,7 @@ export const OrtakoyMosque: React.FC<OrtakoyMosqueProps> = ({ isNight }) => {
                 <InstancedVoxelGroup 
                     data={glass} 
                     transparent={true} 
-                    opacity={0.9} 
+                    opacity={0.5} 
                     castShadow={false} // CRITICAL: Allows internal point light to shine OUT
                 />
             )}

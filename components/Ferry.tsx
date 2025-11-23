@@ -6,17 +6,23 @@ import { VoxelData } from '../types';
 
 const SCALE = 0.125;
 
-export const Ferry: React.FC = () => {
+interface FerryProps {
+  isNight: boolean;
+}
+
+export const Ferry: React.FC<FerryProps> = ({ isNight }) => {
   const ferryRef = useRef<Group>(null);
   
-  const voxelData = useMemo(() => {
-      const data: VoxelData[] = [];
+  const { opaque, glass } = useMemo(() => {
+      const opaque: VoxelData[] = [];
+      const glass: VoxelData[] = [];
       
       // PALETTE based on Reference Image (Caddebostan Ferry)
       const cGreen = "#15803d";  // Dark Green Hull (Waterline)
       const cWhite = "#f8fafc";  // Superstructure
       const cDeck = "#cbd5e1";   // Light Grey Deck floor
-      const cWindow = "#1e293b"; // Dark Windows
+      const cWindow = "#1e293b"; // Dark Windows (Day)
+      const cNightGlass = "#fef08a"; // Yellow Light (Night)
       const cYellow = "#facc15"; // Masts / Trim / Railings
       const cOrange = "#ea580c"; // Lifebuoys
       const cBlack = "#0f172a";  // Funnel Top / Radar
@@ -26,8 +32,11 @@ export const Ferry: React.FC = () => {
       const widthMax = 16; // 2 units wide
       
       // Helper to push voxels
-      const push = (x:number, y:number, z:number, c:string) => {
-          data.push({position: [x*SCALE, y*SCALE, z*SCALE], color: c});
+      const pushOpaque = (x:number, y:number, z:number, c:string) => {
+          opaque.push({position: [x*SCALE, y*SCALE, z*SCALE], color: c});
+      };
+      const pushGlass = (x:number, y:number, z:number, c:string) => {
+          glass.push({position: [x*SCALE, y*SCALE, z*SCALE], color: c});
       };
 
       for(let z=0; z<length; z++) {
@@ -50,22 +59,22 @@ export const Ferry: React.FC = () => {
               
               // 1. GREEN HULL (Waterline & Bottom)
               // Layers 0-1
-              push(x, 0, zPos, cGreen);
-              push(x, 1, zPos, cGreen);
+              pushOpaque(x, 0, zPos, cGreen);
+              pushOpaque(x, 1, zPos, cGreen);
 
               // 2. WHITE MAIN HULL / LOWER DECK
               // Layers 2-5
               if (x === -halfW || x === halfW) {
                    // Outer Hull Wall
-                   push(x, 2, zPos, cWhite);
-                   push(x, 3, zPos, cWhite); // Name area
-                   push(x, 4, zPos, cWhite); 
-                   push(x, 5, zPos, cWhite);
+                   pushOpaque(x, 2, zPos, cWhite);
+                   pushOpaque(x, 3, zPos, cWhite); // Name area
+                   pushOpaque(x, 4, zPos, cWhite); 
+                   pushOpaque(x, 5, zPos, cWhite);
               } else {
                    // Interior Floor (Deck)
-                   if (x%2===0 && z%2===0) push(x, 2, zPos, cDeck); 
+                   if (x%2===0 && z%2===0) pushOpaque(x, 2, zPos, cDeck); 
                    // Ceiling of lower deck
-                   push(x, 6, zPos, cWhite);
+                   pushOpaque(x, 6, zPos, cWhite);
               }
 
               // 3. PASSENGER CABIN (Middle Layer)
@@ -74,17 +83,30 @@ export const Ferry: React.FC = () => {
               if (x === -halfW || x === halfW) {
                    // Render wall 6-10
                    for(let y=6; y<=10; y++) {
+                        let isWindow = false;
                         let finalColor = cWhite;
-                        if (y>=8 && y<=9 && (z%4!==0)) finalColor = cWindow;
                         
-                        // Lifebuoys on railing (Layer 7)
-                        if (y===7 && z%12===0 && Math.abs(zNorm) < 0.6) finalColor = cOrange;
+                        // Window Logic
+                        if (y>=8 && y<=9 && (z%4!==0)) {
+                            isWindow = true;
+                        }
+                        
+                        // Lifebuoys on railing (Layer 7) - overrides window/wall
+                        if (y===7 && z%12===0 && Math.abs(zNorm) < 0.6) {
+                            finalColor = cOrange;
+                            isWindow = false;
+                        }
 
-                        push(x, y, zPos, finalColor);
+                        if (isWindow) {
+                            if (isNight) pushGlass(x, y, zPos, cNightGlass);
+                            else pushOpaque(x, y, zPos, cWindow);
+                        } else {
+                            pushOpaque(x, y, zPos, finalColor);
+                        }
                    }
               } else {
                    // Roof of main cabin (Floor of upper deck)
-                   push(x, 11, zPos, cWhite); 
+                   pushOpaque(x, 11, zPos, cWhite); 
               }
 
               // 4. UPPER DECK & BRIDGE
@@ -102,25 +124,43 @@ export const Ferry: React.FC = () => {
                         // Upper Deck Railing / Wall
                         if (isOpenDeck) {
                              // Open deck railing
-                             push(x, 12, zPos, cYellow); 
+                             pushOpaque(x, 12, zPos, cYellow); 
                         } else {
                              // Enclosed Upper Cabin Wall
                              for(let y=12; y<=16; y++) {
                                  let col = cWhite;
+                                 let isWindow = false;
+                                 
                                  // Windows
-                                 if (y>=13 && y<=14 && (z%3!==0)) col = cWindow;
-                                 push(x, y, zPos, col);
+                                 if (y>=13 && y<=14 && (z%3!==0)) {
+                                     isWindow = true;
+                                 }
+
+                                 if (isWindow) {
+                                     if (isNight) pushGlass(x, y, zPos, cNightGlass);
+                                     else pushOpaque(x, y, zPos, cWindow);
+                                 } else {
+                                     pushOpaque(x, y, zPos, col);
+                                 }
                              }
                         }
                    } else {
                         // Inside Upper Area
                         if (isOpenDeck) {
-                             push(x, 11, zPos, cDeck); // Floor
+                             pushOpaque(x, 11, zPos, cDeck); // Floor
                              // Benches?
-                             if (x===0 && z%4===0) push(x, 12, zPos, cOrange);
+                             if (x===0 && z%4===0) pushOpaque(x, 12, zPos, cOrange);
                         } else {
                              // Roof of Upper Cabin
-                             push(x, 17, zPos, cWhite);
+                             pushOpaque(x, 17, zPos, cWhite);
+                             
+                             // Rear Wall of Cabin (Closing the open deck)
+                             if (zPos === -10) {
+                                  for(let y=12; y<=16; y++) {
+                                      // Solid wall to ensure no gaps
+                                      pushOpaque(x, y, zPos, cWhite);
+                                  }
+                             }
                         }
                    }
               }
@@ -140,8 +180,8 @@ export const Ferry: React.FC = () => {
                for(let sz=-2; sz<=2; sz++) {
                    if (Math.abs(sx)+Math.abs(sz) < 4) {
                        // Red Logo Band
-                       if (y>=19 && y<=21 && (sx===2 || sx===-2)) push(sx, y, sz, cRed);
-                       else push(sx, y, sz, col);
+                       if (y>=19 && y<=21 && (sx===2 || sx===-2)) pushOpaque(sx, y, sz, cRed);
+                       else pushOpaque(sx, y, sz, col);
                    }
                }
            }
@@ -150,53 +190,50 @@ export const Ferry: React.FC = () => {
       // 2. MASTS (Yellow)
       const addMast = (mz: number, height: number) => {
            for(let y=17; y<17+height; y++) {
-               push(0, y, mz, cYellow);
+               pushOpaque(0, y, mz, cYellow);
                // Crossbars
                if (y === 17+height-4) {
-                   push(-1, y, mz, cYellow);
-                   push(1, y, mz, cYellow);
+                   pushOpaque(-1, y, mz, cYellow);
+                   pushOpaque(1, y, mz, cYellow);
                }
            }
       };
       addMast(20, 20); // Fore Mast (Tall)
-      addMast(-12, 12); // Aft Mast (Shorter)
+      addMast(-10, 12); // Aft Mast (Shorter) - Moved from -12 to -10 to connect with hull
 
       // 3. RADAR / BRIDGE DETAILS
-      push(0, 18, 24, cBlack); 
-      push(-1, 18, 24, cBlack);
-      push(1, 18, 24, cBlack);
+      pushOpaque(0, 18, 24, cBlack); 
+      pushOpaque(-1, 18, 24, cBlack);
+      pushOpaque(1, 18, 24, cBlack);
 
       // 4. TURKISH FLAG (Stern)
       const flagZ = -length/2 + 3;
-      for(let y=5; y<16; y++) push(0, y, flagZ, "#94a3b8"); // Pole
+      for(let y=5; y<16; y++) pushOpaque(0, y, flagZ, "#94a3b8"); // Pole
       // Red Flag with simple white dot
       for(let fy=12; fy<15; fy++) {
           for(let fz=1; fz<5; fz++) {
-               push(0, fy, flagZ - fz, cRed);
-               if (fy===13 && fz===2) push(0, fy, flagZ - fz, cWhite);
+               pushOpaque(0, fy, flagZ - fz, cRed);
+               if (fy===13 && fz===2) pushOpaque(0, fy, flagZ - fz, cWhite);
           }
       }
       
       // 5. NAME "CADDEBOSTAN" (Abstract black strip on bow)
-      push(3, 6, length/2 - 6, cBlack);
-      push(4, 6, length/2 - 7, cBlack);
-      push(-3, 6, length/2 - 6, cBlack);
-      push(-4, 6, length/2 - 7, cBlack);
+      pushOpaque(3, 6, length/2 - 6, cBlack);
+      pushOpaque(4, 6, length/2 - 7, cBlack);
+      pushOpaque(-3, 6, length/2 - 6, cBlack);
+      pushOpaque(-4, 6, length/2 - 7, cBlack);
 
-      return data;
-  }, []);
+      return { opaque, glass };
+  }, [isNight]);
 
   // Animation Loop
   useFrame((state) => {
     if (ferryRef.current) {
       const t = state.clock.getElapsedTime();
       // Figure-8 / Oval path in the middle of Bosphorus
-      // Path: Z varies largely (approx -30 to 30), X varies slightly (-5 to 5) to simulate crossing/turning
-      
       const speed = 0.08;
       // Parametric path
       const z = Math.sin(t * speed) * 25;
-      // Reduced amplitude to avoid collision with Maiden's Tower (at x=8)
       const x = Math.cos(t * speed * 2) * 4.5; 
       
       ferryRef.current.position.z = z;
@@ -204,7 +241,6 @@ export const Ferry: React.FC = () => {
       
       // Calculate tangent for rotation
       const dz = 25 * speed * Math.cos(t * speed);
-      // Derivative of 4.5 * cos(2wt) is -9 * sin(2wt)
       const dx = -9 * speed * Math.sin(t * speed * 2);
       
       ferryRef.current.rotation.y = Math.atan2(dx, dz);
@@ -213,7 +249,25 @@ export const Ferry: React.FC = () => {
 
   return (
     <group ref={ferryRef} scale={[0.64, 0.64, 0.64]}>
-        <InstancedVoxelGroup data={voxelData} />
+        <InstancedVoxelGroup data={opaque} />
+        
+        {/* Night Window Glow - rendered separately for effect */}
+        {glass.length > 0 && (
+          <InstancedVoxelGroup 
+             data={glass} 
+             transparent={true} 
+             opacity={isNight ? 0.9 : 1} // Higher opacity at night to look like bright lights
+             castShadow={false}
+          />
+        )}
+
+        {/* Interior Lights (Attached to group so they move with the ship) */}
+        {isNight && (
+          <>
+             <pointLight position={[0, 8 * SCALE, 15 * SCALE]} color="#facc15" intensity={2} distance={10} decay={2} />
+             <pointLight position={[0, 8 * SCALE, -5 * SCALE]} color="#facc15" intensity={2} distance={10} decay={2} />
+          </>
+        )}
     </group>
   );
 };

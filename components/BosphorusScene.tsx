@@ -108,7 +108,7 @@ export const BosphorusScene: React.FC<BosphorusSceneProps> = ({ mode }) => {
         <OrtakoyMosque isNight={isNight} />
         <MaidensTower isNight={isNight} />
         
-        <Ferry />
+        <Ferry isNight={isNight} />
         <Seagulls />
       </group>
     </Canvas>
