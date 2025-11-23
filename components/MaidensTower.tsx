@@ -374,8 +374,6 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
              intensity={5} 
              distance={15} 
              decay={1.5} 
-             castShadow
-             shadow-bias={-0.0001}
            />
         )}
     </group>

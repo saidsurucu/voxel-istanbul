@@ -401,7 +401,6 @@ export const OrtakoyMosque: React.FC<OrtakoyMosqueProps> = ({ isNight }) => {
                         intensity={10} 
                         distance={60} 
                         decay={1.0} 
-                        castShadow
                     />
                     
                     {/* Dome Light (Upper, illuminates drum windows) */}

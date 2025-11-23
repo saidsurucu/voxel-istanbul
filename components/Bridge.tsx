@@ -403,7 +403,7 @@ export const Bridge: React.FC<BridgeProps> = ({ isNight }) => {
         {/* Static Structure */}
         <InstancedVoxelGroup 
             data={structure} 
-            castShadow={true} 
+            castShadow={false} 
         />
         
         {/* Emissive Night Lights */}

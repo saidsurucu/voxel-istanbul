@@ -22,7 +22,6 @@ export const BosphorusScene: React.FC<BosphorusSceneProps> = ({ mode }) => {
 
   return (
     <Canvas 
-      shadows 
       camera={{ position: [20, 20, 20], fov: 45 }}
       gl={{ antialias: false, stencil: false, depth: true }}
       dpr={[1, 1.5]} // Optimization for performance
@@ -55,8 +54,6 @@ export const BosphorusScene: React.FC<BosphorusSceneProps> = ({ mode }) => {
              position={[-10, 15, -10]} 
              intensity={2.0} 
              color="#c7d2fe" 
-             castShadow
-             shadow-bias={-0.0001}
            />
            
            {/* Warm city glow */}
@@ -72,8 +69,6 @@ export const BosphorusScene: React.FC<BosphorusSceneProps> = ({ mode }) => {
            <directionalLight 
              position={[30, 30, 10]} 
              intensity={2.0} 
-             castShadow 
-             shadow-mapSize={[2048, 2048]}
              color="#fff7ed" 
            />
            <Sky sunPosition={[100, 20, 100]} turbidity={0.4} rayleigh={0.5} mieCoefficient={0.005} mieDirectionalG={0.8} />
@@ -102,7 +97,7 @@ export const BosphorusScene: React.FC<BosphorusSceneProps> = ({ mode }) => {
         <WaterfrontMansions isAsia={false} isNight={isNight} />
         <WaterfrontMansions isAsia={true} isNight={isNight} />
         
-        <Apartments />
+        <Apartments isNight={isNight} />
 
         <Bridge isNight={isNight} />
         <OrtakoyMosque isNight={isNight} />

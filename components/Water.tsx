@@ -99,7 +99,7 @@ export const WaterBody: React.FC<WaterProps> = ({ isNight }) => {
   }, [isNight]);
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, count]} receiveShadow>
+    <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
       <boxGeometry args={[1, 1, 1]} />
       {/* 
          Material Update:

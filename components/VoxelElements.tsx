@@ -17,7 +17,7 @@ export const InstancedVoxelGroup: React.FC<InstancedVoxelGroupProps> = ({
   scale = 0.125, 
   transparent = false, 
   opacity = 1,
-  castShadow = true
+  castShadow = false
 }) => {
   const meshRef = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
@@ -65,7 +65,6 @@ export const InstancedVoxelGroup: React.FC<InstancedVoxelGroupProps> = ({
       args={[undefined, undefined, data.length]}
       frustumCulled={true}
       castShadow={castShadow}
-      receiveShadow
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial 
