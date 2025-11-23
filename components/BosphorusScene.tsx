@@ -10,6 +10,7 @@ import { Seagulls } from './Seagulls';
 import { Bridge } from './Bridge';
 import { OrtakoyMosque } from './OrtakoyMosque';
 import { Ferry } from './Ferry';
+import { FishingBoat } from './FishingBoat';
 import { Apartments } from './Apartments';
 import { SceneMode } from '../types';
 
@@ -104,6 +105,7 @@ export const BosphorusScene: React.FC<BosphorusSceneProps> = ({ mode }) => {
         <MaidensTower isNight={isNight} />
         
         <Ferry isNight={isNight} />
+        <FishingBoat isNight={isNight} />
         <Seagulls />
       </group>
     </Canvas>
