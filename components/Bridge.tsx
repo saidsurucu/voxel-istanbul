@@ -8,10 +8,12 @@ import { enhanceShaderLighting } from '../utils/enhanceShaderLighting';
 const SCALE = 0.125;
 
 // Constants extracted for shared use
-const BRIDGE_LENGTH = 64;
+// Increased Bridge Length from 64 to 96 (1.5x)
+const BRIDGE_LENGTH = 96;
 const DECK_Y = 8;
 const BRIDGE_Z = -5;
-const TOWER_X = 14;
+// Increased Tower X position from 14 to 21 (1.5x)
+const TOWER_X = 21;
 
 // --- Car Component ---
 interface CarProps {
@@ -107,7 +109,8 @@ const Traffic: React.FC<{ isNight: boolean }> = ({ isNight }) => {
     const generatedCars = [];
     const colors = ["#f1f5f9", "#1e293b", "#ef4444", "#3b82f6", "#cbd5e1"]; 
     
-    for (let i = 0; i < 24; i++) {
+    // Increased number of cars for longer bridge
+    for (let i = 0; i < 36; i++) {
         const lane = Math.floor(Math.random() * 3); 
         const direction = Math.random() > 0.5 ? 1 : -1;
         const laneZ = (0.6 + (lane * 0.8)) * direction;
@@ -138,8 +141,6 @@ const Traffic: React.FC<{ isNight: boolean }> = ({ isNight }) => {
 };
 
 // --- Emissive Lights Component ---
-// This renders a group of voxels with a high-intensity emissive material
-// similar to the car lights technique.
 const BridgeLightGroup: React.FC<{ data: VoxelData[], color: string, intensity: number }> = ({ data, color, intensity }) => {
     const meshRef = useRef<InstancedMesh>(null);
     const dummy = useMemo(() => new Object3D(), []);

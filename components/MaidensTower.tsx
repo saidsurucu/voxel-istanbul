@@ -354,8 +354,10 @@ export const MaidensTower: React.FC<MaidensTowerProps> = ({ isNight }) => {
   // Light positioned inside the hollow lantern
   const lanternHeight = 1.8 + 0.6; // tUpY (1.8) + Half Lantern Height (0.6) = 2.4
 
+  // Maiden's Tower moved further out to X=14 (was X=8) to maintain 
+  // approximate distance from the Asian shore which moved from 12 to 18.
   return (
-    <group position={[8, 0, 8]}>
+    <group position={[14, 0, 8]}>
         <InstancedVoxelGroup data={opaque} />
 
         {/* Night Window Glow - rendered separately for bloom effect */}

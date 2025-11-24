@@ -382,8 +382,9 @@ export const OrtakoyMosque: React.FC<OrtakoyMosqueProps> = ({ isNight }) => {
         return { opaque, glass };
     }, [isNight]);
 
+    // Position updated to match wider strait (shore is at -18, so moved to -19.5)
     return (
-        <group position={[-13.5, 0, -2]}>
+        <group position={[-19.5, 0, -2]}>
             {/* Opaque Structure */}
             <InstancedVoxelGroup data={opaque} />
             

@@ -55,7 +55,7 @@ export const YaliTypeA: React.FC<YaliProps> = ({ isAsia, isNight }) => {
     const glass: VoxelData[] = [];
 
     const Z_RANGE = 192; 
-    const startOffset = 96; 
+    const startOffset = 144; // Updated from 96 to 144 (1.5x width)
     
     const seededRandom = (seed: number) => {
       const x = Math.sin(seed) * 10000;

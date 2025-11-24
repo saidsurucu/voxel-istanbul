@@ -73,7 +73,7 @@ export const ApartmentBlock: React.FC<ApartmentsProps> = ({ isAsia, isNight }) =
     // Bounds
     const Z_RANGE = 192; 
     const X_DEPTH = 144; 
-    const startOffset = 96;
+    const startOffset = 144; // Updated to 144
     const xOffset = isAsia ? startOffset : -startOffset; 
     const xDir = isAsia ? 1 : -1;
 

@@ -47,7 +47,7 @@ export const YaliTypeC: React.FC<YaliProps> = ({ isAsia, isNight }) => {
     const glass: VoxelData[] = [];
 
     const Z_RANGE = 192; 
-    const startOffset = 96; // Water edge
+    const startOffset = 144; // Updated from 96 to 144
     
     // Helper for deterministic randomness
     const seededRandom = (seed: number) => {

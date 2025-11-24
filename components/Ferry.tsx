@@ -1,3 +1,4 @@
+
 import React, { useRef, useMemo, useLayoutEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group, InstancedMesh, Object3D } from 'three';
@@ -261,18 +262,27 @@ export const Ferry: React.FC<FerryProps> = ({ isNight }) => {
   useFrame((state) => {
     if (ferryRef.current) {
       const t = state.clock.getElapsedTime();
-      // Figure-8 / Oval path in the middle of Bosphorus
+      
+      // TRAFFIC LANE UPDATE:
+      // Path stays between X = 4.5 and X = 7.5
+      // Maiden's Tower moved to X = 14, so we have more space.
+      
       const speed = 0.08;
-      // Parametric path
-      const z = Math.sin(t * speed) * 25;
-      const x = Math.cos(t * speed * 2) * 4.5; 
+      
+      // Long Loop on Asian Side
+      const z = Math.sin(t * speed) * 20;
+      
+      // Moved X base further out to 6.0 (from 3.5) for wider strait
+      const xBase = 6.0;
+      const xVar = Math.cos(t * speed * 2) * 1.5; 
+      const x = xBase + xVar; 
       
       ferryRef.current.position.z = z;
       ferryRef.current.position.x = x;
       
       // Calculate tangent for rotation
-      const dz = 25 * speed * Math.cos(t * speed);
-      const dx = -9 * speed * Math.sin(t * speed * 2);
+      const dz = 20 * speed * Math.cos(t * speed);
+      const dx = -1.5 * speed * 2 * Math.sin(t * speed * 2);
       
       ferryRef.current.rotation.y = Math.atan2(dx, dz);
     }

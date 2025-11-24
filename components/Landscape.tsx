@@ -24,9 +24,9 @@ export const LandscapeSide: React.FC<SideProps> = ({ isAsia }) => {
       for (let xIndex = 0; xIndex < X_DEPTH; xIndex++) {
         
         // Calculate World Positions
-        // Water ends at +/- 12 units (96 voxels)
+        // Water ends at +/- 18 units (144 voxels) - Widened 1.5x from original 96
         // Start land exactly at water edge
-        const startOffset = 96;
+        const startOffset = 144;
         const xOffset = isAsia ? startOffset : -startOffset; 
         const xDir = isAsia ? 1 : -1;
         
@@ -34,12 +34,14 @@ export const LandscapeSide: React.FC<SideProps> = ({ isAsia }) => {
         const worldZ = zIndex * SCALE;
 
         // --- PRECISE EXCLUSION ZONES (Prevent Clipping Only) ---
+        // Updated exclusion coordinates for wider strait
         const isMosqueLocation = !isAsia && 
-                                 worldX > -15.5 && worldX < -11.5 &&
+                                 worldX > -21.5 && worldX < -17.5 &&
                                  worldZ > -2.5 && worldZ < 1.5;
 
+        // Updated exclusion for new tower positions (Towers at +/- 21)
         const isBridgeLocation = Math.abs(worldZ - (-5)) < 2.0 && 
-                                 Math.abs(worldX) > 10.0 && Math.abs(worldX) < 14.0;
+                                 Math.abs(worldX) > 17.0 && Math.abs(worldX) < 22.0;
 
         const isRestricted = isMosqueLocation || isBridgeLocation;
 

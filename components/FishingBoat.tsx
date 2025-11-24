@@ -1,3 +1,4 @@
+
 import React, { useRef, useMemo, useLayoutEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group, InstancedMesh, Object3D } from 'three';
@@ -195,29 +196,26 @@ export const FishingBoat: React.FC<FishingBoatProps> = ({ isNight }) => {
       if (!groupRef.current) return;
       const t = state.clock.getElapsedTime();
       
-      // SAFE ROUTE UPDATE:
-      // Water is defined in range X: [-12, 12] and Z: [-30, 30].
-      // Maiden's Tower is at X=8, Z=8.
+      // TRAFFIC LANE UPDATE:
+      // Moved to Far West Channel (X < -6) to avoid Tanker
       
       const speed = 0.08; 
       
       // Path parameters
-      const zRadius = 22;  // Bounds Z between -22 and 22 (safe within 30)
-      const xRadius = 4;   // Bounds X variation
-      const xCenter = -3;  // Shift towards Europe to avoid Maiden's Tower (at X=8)
+      const zRadius = 22;  
+      const xRadius = 2;   
+      // Modified from -14 to -11 to prevent collision with Ortakoy Mosque (located at ~-16.5)
+      const xCenter = -11;  
       
       // Current position
-      const currT = t + 100; // Arbitrary offset
+      const currT = t + 100;
       const z = Math.sin(currT * speed) * zRadius;
       const x = xCenter + Math.cos(currT * speed) * xRadius; 
-      // X ranges from -7 to 1. Safe from Europe shore (-12) and far from Maiden's Tower (8).
 
       groupRef.current.position.x = x;
       groupRef.current.position.z = z;
       
       // Rotation (Tangent)
-      // dx/dt = -speed * sin * xRadius
-      // dz/dt = speed * cos * zRadius
       const dx = -speed * Math.sin(currT * speed) * xRadius;
       const dz = speed * Math.cos(currT * speed) * zRadius;
       
